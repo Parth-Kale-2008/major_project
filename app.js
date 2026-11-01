@@ -14,7 +14,8 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
-const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust";
+// Cloud database in production (set MONGO_URL), local MongoDB while developing
+const MONGO_URL = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/wanderlust";
 
 async function main() {
     await mongoose.connect(MONGO_URL);
@@ -34,7 +35,7 @@ app.engine("ejs", ejsMate);
 app.use(express.static(path.join(__dirname, "public")));
 
 const sessionOptions = {
-    secret: "mysupersecretcode",
+    secret: process.env.SECRET || "mysupersecretcode",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -63,7 +64,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-    res.send("Hi, I am root");
+    res.redirect("/listings");
 });
 
 //app.get("/demouser", async (req, res) => {
@@ -101,6 +102,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(8080, () => {
-    console.log("Server Started on Port 8080");
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+    console.log(`Server Started on Port ${PORT}`);
 });
