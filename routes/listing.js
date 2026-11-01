@@ -4,6 +4,12 @@ const wrapAsync = require("../utils/wrapAsync.js");
 const Listing = require("../models/listing.js");
 const {isLoggedIn,isOwner,validateListing} = require("../middleware.js");
 
+// The form sends the image as a link (text); the model stores it as { url, filename }.
+function imageFromForm(link) {
+    const url = typeof link === "string" ? link.trim() : "";
+    return url ? { url, filename: "listingimage" } : undefined;
+}
+
 
 router.get("/",wrapAsync(async (req,res)=>{
     const allListings =await Listing.find({});
@@ -35,10 +41,10 @@ router.get("/:id", wrapAsync(async (req, res) => {
 }));
 
 router.post("/",isLoggedIn,validateListing,wrapAsync(async (req,res,next)=>{
-    let result = listingSchema.validate(req.body);
-    console.log(result);
-    //let{title,description,image,price,country,location} = req.body;
-    const newListing = new Listing (req.body.listing);
+    const data = { ...req.body.listing };
+    const image = imageFromForm(data.image);
+    if (image) data.image = image; else delete data.image; // empty link -> default picture
+    const newListing = new Listing(data);
     //console.log(req.user);
     newListing.owner = req.user._id;
     await newListing.save();
@@ -52,18 +58,21 @@ router.get("/:id/edit",isLoggedIn,isOwner,wrapAsync(async (req, res)=>{
 const listing = await Listing.findById(id);
 if(!listing){
         req.flash("error","Listing does not exist");
-        res.redirect("./listings");
+        return res.redirect("/listings");
     }
 res.render("listings/edit.ejs",{listing});
 }));
 
 //update route
-router.put("/:id",isLoggedIn,isOwner,validateListing, async (req, res)=>{
+router.put("/:id",isLoggedIn,isOwner,validateListing, wrapAsync(async (req, res)=>{
 let {id} = req.params;
-await Listing.findByIdAndUpdate (id, { ...req.body.listing });
+const data = { ...req.body.listing };
+const image = imageFromForm(data.image);
+if (image) data.image = image; else delete data.image;
+await Listing.findByIdAndUpdate (id, data);
 req.flash("success","Listing updated");
 res.redirect(`/listings/${id}`);
-});
+}));
 
 //delete route
 router.delete("/:id",isLoggedIn,isOwner,wrapAsync(async (req, res, next) => {
